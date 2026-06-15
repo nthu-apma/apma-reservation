@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>量測預約平台 — 部署說明</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Segoe UI', 'Microsoft JhengHei', sans-serif;
+      background: #f5f7fa;
+      color: #1a202c;
+      padding: 40px 20px;
+    }
+    .container {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+    header {
+      background: linear-gradient(135deg, #6b46c1, #4299e1);
+      color: white;
+      border-radius: 12px;
+      padding: 32px 36px;
+      margin-bottom: 32px;
+    }
+    header h1 { font-size: 24px; font-weight: 700; margin-bottom: 6px; }
+    header p { font-size: 14px; opacity: 0.85; }
+    .info-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 32px;
+    }
+    .info-card {
+      background: white;
+      border-radius: 10px;
+      padding: 20px 24px;
+      border-left: 4px solid #6b46c1;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .info-card h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 0.05em; color: #718096; margin-bottom: 8px; }
+    .info-card p { font-size: 15px; font-weight: 600; color: #2d3748; }
+    .info-card code { font-family: 'Courier New', monospace; background: #edf2f7; padding: 2px 6px; border-radius: 4px; font-size: 14px; }
+    .section {
+      background: white;
+      border-radius: 10px;
+      padding: 28px 32px;
+      margin-bottom: 24px;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    .section-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 17px;
+      font-weight: 700;
+      color: #2d3748;
+      margin-bottom: 20px;
+      padding-bottom: 12px;
+      border-bottom: 2px solid #e2e8f0;
+    }
+    .badge {
+      background: #6b46c1;
+      color: white;
+      border-radius: 20px;
+      padding: 2px 12px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .badge.green { background: #38a169; }
+    .badge.blue { background: #3182ce; }
+    .badge.orange { background: #dd6b20; }
+    .step {
+      display: flex;
+      gap: 16px;
+      margin-bottom: 20px;
+    }
+    .step:last-child { margin-bottom: 0; }
+    .step-num {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      background: #6b46c1;
+      color: white;
+      font-size: 13px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .step-content { flex: 1; }
+    .step-content h4 { font-size: 14px; font-weight: 600; color: #2d3748; margin-bottom: 6px; }
+    .step-content p { font-size: 13px; color: #4a5568; line-height: 1.6; margin-bottom: 8px; }
+    .step-content p:last-child { margin-bottom: 0; }
+    pre {
+      background: #1a202c;
+      color: #e2e8f0;
+      border-radius: 8px;
+      padding: 14px 18px;
+      font-family: 'Courier New', monospace;
+      font-size: 13px;
+      line-height: 1.6;
+      overflow-x: auto;
+      margin-top: 8px;
+    }
+    pre .comment { color: #68d391; }
+    .note {
+      background: #ebf8ff;
+      border-left: 4px solid #4299e1;
+      border-radius: 0 6px 6px 0;
+      padding: 12px 16px;
+      margin-top: 8px;
+      font-size: 13px;
+      color: #2c5282;
+      line-height: 1.6;
+    }
+    .warn {
+      background: #fffaf0;
+      border-left: 4px solid #ed8936;
+      border-radius: 0 6px 6px 0;
+      padding: 12px 16px;
+      margin-top: 8px;
+      font-size: 13px;
+      color: #7b341e;
+      line-height: 1.6;
+    }
+    .time-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+      font-size: 13px;
+    }
+    .time-table th {
+      background: #edf2f7;
+      text-align: left;
+      padding: 8px 14px;
+      font-weight: 600;
+      color: #4a5568;
+    }
+    .time-table td {
+      padding: 8px 14px;
+      border-bottom: 1px solid #e2e8f0;
+      color: #2d3748;
+    }
+    .time-table tr:last-child td { border-bottom: none; }
+    footer {
+      text-align: center;
+      font-size: 12px;
+      color: #a0aec0;
+      margin-top: 16px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <h1>清華大學 前瞻光電技術與材料聯盟</h1>
+    <p>量測預約平台 — NAS 部署與維護說明</p>
+  </header>
+
+  <!-- 基本資訊 -->
+  <div class="info-grid">
+    <div class="info-card">
+      <h3>網站網址（內網）</h3>
+      <p><code>http://192.168.0.97:3000</code></p>
+    </div>
+    <div class="info-card">
+      <h3>NAS 名稱 / SSH 位址</h3>
+      <p><code>admin@192.168.0.97</code></p>
+    </div>
+    <div class="info-card">
+      <h3>管理員帳號</h3>
+      <p><code>nthu.apma@gmail.com</code></p>
+    </div>
+    <div class="info-card">
+      <h3>專案資料夾（NAS 內）</h3>
+      <p><code>/var/services/homes/docker/Reservation system</code></p>
+    </div>
+  </div>
+
+  <!-- 首次部署流程 -->
+  <div class="section">
+    <div class="section-title">
+      <span class="badge">A</span> 首次部署流程
+    </div>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <h4>確認 NAS 環境</h4>
+        <p>DSM → 套件中心 → 確認已安裝 <strong>Container Manager</strong>。<br>
+        DSM → 控制台 → Terminal &amp; SNMP → 勾選 <strong>Enable SSH service</strong>。</p>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <h4>上傳專案資料夾到 NAS</h4>
+        <p>透過 <strong>File Station</strong> 把整個 <code>Reservation system</code> 資料夾上傳到：</p>
+        <pre>/var/services/homes/docker/</pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <h4>SSH 連線到 NAS</h4>
+        <p>在 Windows 終端機輸入：</p>
+        <pre>ssh admin@192.168.0.97</pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <h4>進入專案資料夾並 Build</h4>
+        <pre>cd "/var/services/homes/docker/Reservation system"
+sudo docker compose build</pre>
+        <div class="note">首次 build 約需 10～20 分鐘，請耐心等候。</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <h4>啟動容器</h4>
+        <pre>sudo docker compose up -d</pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">6</div>
+      <div class="step-content">
+        <h4>初始化資料庫結構</h4>
+        <pre>sudo docker compose exec -u root app npx prisma db push</pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">7</div>
+      <div class="step-content">
+        <h4>建立管理員帳號</h4>
+        <pre>sudo docker compose exec -u root app node -e "const b=require('bcryptjs');const{PrismaClient}=require('@prisma/client');const p=new PrismaClient();b.hash(process.env.INITIAL_ADMIN_PASSWORD,12).then(h=>p.user.upsert({where:{email:process.env.INITIAL_ADMIN_EMAIL},update:{},create:{email:process.env.INITIAL_ADMIN_EMAIL,name:process.env.INITIAL_ADMIN_NAME,password:h,role:'ADMIN'}})).then(u=>{console.log('Done:',u.email);return p.\$disconnect()}).catch(e=>{console.error(e);process.exit(1)})"</pre>
+        <div class="note">成功時會顯示：<code>Done: nthu.apma@gmail.com</code></div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 日常更新流程 -->
+  <div class="section">
+    <div class="section-title">
+      <span class="badge green">B</span> 日常更新流程（程式碼有修改）
+    </div>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <h4>上傳更新的檔案</h4>
+        <p>用 File Station 把修改過的檔案上傳到 NAS，覆蓋舊版本。</p>
+        <div class="warn">注意：不要把 <code>.env</code> 覆蓋掉，那個檔案包含 NAS 的設定，和本機開發用的不同。</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <h4>SSH 連線並重新 Build</h4>
+        <pre>ssh admin@192.168.0.97
+
+cd "/var/services/homes/docker/Reservation system"
+sudo docker compose build
+sudo docker compose up -d</pre>
+        <div class="note">後續 build 因為有快取，通常 2～5 分鐘就完成（套件未更動的情況下）。</div>
+      </div>
+    </div>
+
+    <table class="time-table">
+      <tr>
+        <th>情況</th>
+        <th>預估 Build 時間</th>
+      </tr>
+      <tr>
+        <td>只改程式碼（未動 package.json）</td>
+        <td>2～5 分鐘</td>
+      </tr>
+      <tr>
+        <td>新增 npm 套件（有改 package.json）</td>
+        <td>8～15 分鐘</td>
+      </tr>
+      <tr>
+        <td>首次 Build</td>
+        <td>10～20 分鐘</td>
+      </tr>
+      <tr>
+        <td>docker compose up -d（啟動容器）</td>
+        <td>約 30 秒</td>
+      </tr>
+    </table>
+
+  </div>
+
+  <!-- 資料庫異動 -->
+  <div class="section">
+    <div class="section-title">
+      <span class="badge blue">C</span> 資料庫結構有變更時（schema.prisma 有改動）
+    </div>
+
+    <p style="font-size:13px;color:#4a5568;margin-bottom:16px;">
+      當 <code>prisma/schema.prisma</code> 有新增欄位或資料表時，除了上傳檔案和 rebuild 之外，還需要額外執行：
+    </p>
+
+    <pre>sudo docker compose exec -u root app npx prisma db push</pre>
+
+    <div class="warn">此指令會同步資料庫結構，但<strong>不會刪除現有資料</strong>，只會新增缺少的欄位。</div>
+
+  </div>
+
+  <!-- 設備圖片管理 -->
+  <div class="section">
+    <div class="section-title">
+      <span class="badge" style="background:#6b46c1">D</span> 設備圖片管理
+    </div>
+
+    <p style="font-size:13px;color:#4a5568;margin-bottom:16px;">
+      設備圖片需放在 NAS 的指定資料夾，並使用特定的 URL 格式填入管理後台。
+    </p>
+
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <h4>上傳圖片到 NAS</h4>
+        <p>用 File Station 把圖片放到以下資料夾：</p>
+        <pre>/var/services/homes/docker/Reservation system/public/images/services/</pre>
+        <div class="note">支援格式：png、jpg、jpeg、webp、gif</div>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <h4>設定資料夾權限（首次放入圖片時）</h4>
+        <p>SSH 連進 NAS 後執行：</p>
+        <pre>sudo chmod -R 755 "/var/services/homes/docker/Reservation system/public/images/services"</pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <h4>在管理後台填入圖片 URL</h4>
+        <p>格式：<code>/api/images/services/檔名.副檔名</code></p>
+        <p>例如圖片檔名為 <code>tas.png</code>，就填：</p>
+        <pre>/api/images/services/tas.png</pre>
+        <div class="warn">注意：開頭必須有 <code>/</code>，不能直接填 <code>images/services/tas.png</code>。</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- 常用維護指令 -->
+  <div class="section">
+    <div class="section-title">
+      <span class="badge orange">E</span> 常用維護指令
+    </div>
+
+    <div class="step">
+      <div class="step-num" style="background:#dd6b20">—</div>
+      <div class="step-content">
+        <h4>查看容器運行狀態</h4>
+        <pre>sudo docker compose ps</pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num" style="background:#dd6b20">—</div>
+      <div class="step-content">
+        <h4>查看應用程式 Log（除錯用）</h4>
+        <pre>sudo docker compose logs app --tail=50</pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num" style="background:#dd6b20">—</div>
+      <div class="step-content">
+        <h4>重新啟動容器（不重新 Build）</h4>
+        <pre>sudo docker compose restart</pre>
+      </div>
+    </div>
+
+    <div class="step">
+      <div class="step-num" style="background:#dd6b20">—</div>
+      <div class="step-content">
+        <h4>停止所有容器</h4>
+        <pre>sudo docker compose down</pre>
+      </div>
+    </div>
+
+  </div>
+
+  <footer>
+    清華大學 前瞻光電技術與材料聯盟 量測預約平台 &nbsp;|&nbsp; 2026
+  </footer>
+
+</div>
+</body>
+</html>

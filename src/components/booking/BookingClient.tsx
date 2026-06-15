@@ -1,0 +1,344 @@
+'use client'
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import Link from 'next/link'
+import { ArrowLeft, ArrowRight, CheckCircle, CalendarDays, ClipboardList, Upload, X } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { useLanguage } from '@/contexts/LanguageContext'
+import { toast } from 'sonner'
+import { cn } from '@/lib/utils'
+import type { FormField } from '@/types'
+
+interface TimeSlot { id: string; date: string; startTime: string; endTime: string }
+interface Equipment {
+  id: string; name: string; nameEn?: string | null; formFields: FormField[]
+}
+
+export function BookingClient({ equipment, timeSlots }: { equipment: Equipment; timeSlots: TimeSlot[] }) {
+  const { lang, t } = useLanguage()
+  const router = useRouter()
+  const [step, setStep] = useState(1)
+  const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null)
+  const [selectedDate, setSelectedDate] = useState<string | null>(null)
+  const [formData, setFormData] = useState<Record<string, string>>({})
+  const [uploading, setUploading] = useState<Record<string, boolean>>({})
+  const [submitting, setSubmitting] = useState(false)
+  const [done, setDone] = useState(false)
+
+  function isVisible(field: FormField, data: Record<string, string>): boolean {
+    if (!field.conditionalOn) return true
+    return data[field.conditionalOn] === field.conditionalValue
+  }
+
+  async function handleFileUpload(fieldId: string, file: File) {
+    setUploading((p) => ({ ...p, [fieldId]: true }))
+    try {
+      const fd = new FormData()
+      fd.append('file', file)
+      const res = await fetch('/api/upload', { method: 'POST', body: fd })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Upload failed')
+      setFormData((p) => ({ ...p, [fieldId]: data.url }))
+      toast.success(lang === 'zh' ? '上傳成功' : 'Uploaded')
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : (lang === 'zh' ? '上傳失敗' : 'Upload failed'))
+    } finally {
+      setUploading((p) => ({ ...p, [fieldId]: false }))
+    }
+  }
+
+  const uniqueDates = Array.from(new Set(timeSlots.map((s) => s.date))).sort()
+  const slotsForDate = selectedDate ? timeSlots.filter((s) => s.date === selectedDate) : []
+
+  const name = lang === 'zh' ? equipment.name : (equipment.nameEn || equipment.name)
+
+  async function handleSubmit() {
+    if (!selectedSlot) return
+    const missing = equipment.formFields.filter(
+      (f) => f.required && isVisible(f, formData) && !formData[f.id]?.trim()
+    )
+    if (missing.length > 0) {
+      toast.error(lang === 'zh' ? '請填寫所有必填欄位' : 'Please fill in all required fields')
+      return
+    }
+
+    const visibleFormData: Record<string, string> = {}
+    for (const field of equipment.formFields) {
+      if (isVisible(field, formData) && formData[field.id]) {
+        visibleFormData[field.id] = formData[field.id]
+      }
+    }
+
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/reservations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          equipmentId: equipment.id,
+          timeSlotId: selectedSlot.id,
+          formData: visibleFormData,
+        }),
+      })
+      if (!res.ok) {
+        const err = await res.json()
+        toast.error(err.error || t.common.error)
+        return
+      }
+      setDone(true)
+    } catch {
+      toast.error(t.common.error)
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  if (done) {
+    return (
+      <div className="container py-16 max-w-lg text-center">
+        <div className="flex justify-center mb-6">
+          <div className="flex h-20 w-20 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/20">
+            <CheckCircle className="h-10 w-10 text-green-600" />
+          </div>
+        </div>
+        <h1 className="text-2xl font-bold mb-3">{t.booking.successTitle}</h1>
+        <p className="text-muted-foreground mb-8">{t.booking.successDesc}</p>
+        <Button asChild>
+          <Link href="/dashboard">{t.booking.viewMyBookings}</Link>
+        </Button>
+      </div>
+    )
+  }
+
+  const steps = [
+    { num: 1, label: t.booking.step1, icon: CalendarDays },
+    { num: 2, label: t.booking.step2, icon: ClipboardList },
+  ]
+
+  return (
+    <div className="container py-8 max-w-2xl">
+      <Button variant="ghost" size="sm" asChild className="mb-6">
+        <Link href={`/equipment/${equipment.id}`}><ArrowLeft className="mr-2 h-4 w-4" />{t.common.back}</Link>
+      </Button>
+
+      <h1 className="text-xl font-bold mb-2">{t.booking.title}</h1>
+      <p className="text-muted-foreground mb-6">{name}</p>
+
+      {/* Step indicator */}
+      <div className="flex items-center gap-2 mb-8">
+        {steps.map((s, i) => (
+          <div key={s.num} className="flex items-center gap-2">
+            <div className={cn(
+              'flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-colors',
+              step >= s.num
+                ? 'bg-primary text-primary-foreground'
+                : 'bg-muted text-muted-foreground'
+            )}>
+              {s.num}
+            </div>
+            <span className={cn('text-sm hidden sm:block', step >= s.num ? 'text-foreground' : 'text-muted-foreground')}>
+              {s.label}
+            </span>
+            {i < steps.length - 1 && (
+              <div className={cn('h-px w-8 mx-2', step > s.num ? 'bg-primary' : 'bg-muted')} />
+            )}
+          </div>
+        ))}
+      </div>
+
+      {/* Step 1: Select time slot */}
+      {step === 1 && (
+        <div className="space-y-6">
+          {uniqueDates.length === 0 ? (
+            <Card>
+              <CardContent className="py-10 text-center text-muted-foreground">
+                {t.booking.noAvailableDates}
+              </CardContent>
+            </Card>
+          ) : (
+            <>
+              {/* Date selector */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base">{t.booking.selectDate}</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {uniqueDates.map((date) => (
+                      <button
+                        key={date}
+                        onClick={() => { setSelectedDate(date); setSelectedSlot(null) }}
+                        className={cn(
+                          'px-3 py-1.5 rounded-md text-sm border transition-colors',
+                          selectedDate === date
+                            ? 'bg-primary text-primary-foreground border-primary'
+                            : 'border-input hover:bg-accent'
+                        )}
+                      >
+                        {date}
+                      </button>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Time slot selector */}
+              {selectedDate && (
+                <Card>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-base">{t.booking.selectSlot} · {selectedDate}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="flex flex-wrap gap-2">
+                      {slotsForDate.map((slot) => (
+                        <button
+                          key={slot.id}
+                          onClick={() => setSelectedSlot(slot)}
+                          className={cn(
+                            'px-4 py-2 rounded-md text-sm border transition-colors',
+                            selectedSlot?.id === slot.id
+                              ? 'bg-primary text-primary-foreground border-primary'
+                              : 'border-input hover:bg-accent'
+                          )}
+                        >
+                          {slot.startTime} – {slot.endTime}
+                        </button>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+            </>
+          )}
+
+          <div className="flex justify-end">
+            <Button
+              onClick={() => setStep(2)}
+              disabled={!selectedSlot}
+            >
+              {t.booking.next} <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {/* Step 2: Fill form */}
+      {step === 2 && (
+        <div className="space-y-6">
+          {/* Selected slot summary */}
+          <Card className="bg-primary/5 border-primary/20">
+            <CardContent className="pt-4 pb-4">
+              <div className="flex items-center gap-2 text-sm">
+                <CalendarDays className="h-4 w-4 text-primary" />
+                <span className="font-medium">{selectedSlot?.date}</span>
+                <span className="text-muted-foreground">{selectedSlot?.startTime} – {selectedSlot?.endTime}</span>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Dynamic form */}
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">{t.equipment.formTitle}</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {equipment.formFields.map((field) => {
+                if (!isVisible(field, formData)) return null
+                const label = lang === 'zh' ? field.label : (field.labelEn || field.label)
+                const placeholder = lang === 'zh' ? field.placeholder : (field.placeholderEn || field.placeholder)
+                const hint = lang === 'zh' ? field.hint : (field.hintEn || field.hint)
+
+                return (
+                  <div key={field.id} className="space-y-1.5">
+                    <Label>
+                      {label}
+                      {field.required && <span className="text-destructive ml-1">*</span>}
+                    </Label>
+                    {field.type === 'textarea' ? (
+                      <Textarea
+                        placeholder={placeholder}
+                        value={formData[field.id] || ''}
+                        onChange={(e) => setFormData((p) => ({ ...p, [field.id]: e.target.value }))}
+                      />
+                    ) : field.type === 'select' ? (
+                      <Select
+                        value={formData[field.id] || ''}
+                        onValueChange={(v) => setFormData((p) => ({ ...p, [field.id]: v }))}
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder={placeholder} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {field.options?.map((opt, idx) => {
+                            const display = lang === 'zh' ? opt : (field.optionsEn?.[idx] ?? opt)
+                            return <SelectItem key={opt} value={opt}>{display}</SelectItem>
+                          })}
+                        </SelectContent>
+                      </Select>
+                    ) : field.type === 'file' ? (
+                      <div className="space-y-2">
+                        {formData[field.id] ? (
+                          <div className="flex items-center gap-2 p-2 border rounded-md bg-muted/40">
+                            {formData[field.id].match(/\.(jpg|jpeg|png|gif|webp)$/i) ? (
+                              <img src={formData[field.id]} alt="uploaded" className="h-16 w-auto rounded object-contain" />
+                            ) : (
+                              <span className="text-xs text-muted-foreground truncate flex-1">{formData[field.id]}</span>
+                            )}
+                            <button type="button" onClick={() => setFormData((p) => ({ ...p, [field.id]: '' }))}
+                              className="text-muted-foreground hover:text-destructive">
+                              <X className="h-4 w-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <label className={cn(
+                            'flex items-center gap-2 px-3 py-2 border border-dashed rounded-md cursor-pointer text-sm text-muted-foreground hover:bg-accent transition-colors',
+                            uploading[field.id] && 'opacity-50 cursor-not-allowed'
+                          )}>
+                            <Upload className="h-4 w-4" />
+                            <span>{uploading[field.id] ? (lang === 'zh' ? '上傳中...' : 'Uploading...') : (lang === 'zh' ? '點擊上傳圖片或 PDF' : 'Click to upload image or PDF')}</span>
+                            <input
+                              type="file"
+                              accept="image/*,.pdf"
+                              className="hidden"
+                              disabled={uploading[field.id]}
+                              onChange={(e) => {
+                                const f = e.target.files?.[0]
+                                if (f) handleFileUpload(field.id, f)
+                              }}
+                            />
+                          </label>
+                        )}
+                      </div>
+                    ) : (
+                      <Input
+                        type={field.type}
+                        placeholder={placeholder}
+                        value={formData[field.id] || ''}
+                        onChange={(e) => setFormData((p) => ({ ...p, [field.id]: e.target.value }))}
+                      />
+                    )}
+                    {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
+                  </div>
+                )
+              })}
+            </CardContent>
+          </Card>
+
+          <div className="flex justify-between">
+            <Button variant="outline" onClick={() => setStep(1)}>
+              <ArrowLeft className="mr-2 h-4 w-4" /> {t.booking.prev}
+            </Button>
+            <Button onClick={handleSubmit} disabled={submitting}>
+              {submitting ? t.booking.submitting : t.booking.submit}
+            </Button>
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
