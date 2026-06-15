@@ -51,7 +51,8 @@ export async function POST(req: Request) {
     })
 
     return NextResponse.json({ avatarUrl: publicUrl })
-  } catch {
-    return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err)
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }
