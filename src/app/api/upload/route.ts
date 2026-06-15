@@ -1,12 +1,16 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { writeFile, mkdir } from 'fs/promises'
-import { join } from 'path'
+import { createClient } from '@supabase/supabase-js'
 import { randomBytes } from 'crypto'
 
-const MAX_SIZE = 10 * 1024 * 1024 // 10 MB
+const MAX_SIZE = 10 * 1024 * 1024
 const ALLOWED_TYPES = ['image/jpeg', 'image/png', 'image/gif', 'image/webp', 'application/pdf']
+
+const supabase = createClient(
+  process.env.SUPABASE_URL!,
+  process.env.SUPABASE_SERVICE_ROLE_KEY!
+)
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
@@ -26,14 +30,18 @@ export async function POST(req: Request) {
 
     const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
     const filename = `${randomBytes(16).toString('hex')}.${ext}`
-    const uploadDir = join(process.cwd(), 'public', 'uploads')
-
-    await mkdir(uploadDir, { recursive: true })
     const buffer = Buffer.from(await file.arrayBuffer())
-    await writeFile(join(uploadDir, filename), buffer)
 
-    return NextResponse.json({ url: `/api/files/${filename}` })
+    const { error } = await supabase.storage
+      .from('uploads')
+      .upload(filename, buffer, { contentType: file.type, upsert: false })
+
+    if (error) throw error
+
+    const { data: { publicUrl } } = supabase.storage.from('uploads').getPublicUrl(filename)
+
+    return NextResponse.json({ url: publicUrl })
   } catch {
-    return NextResponse.json({ error: 'Upload failed' }, { status: 500 })
+    return NextResponse.json({ error: '上傳失敗，請稍後再試' }, { status: 500 })
   }
 }
