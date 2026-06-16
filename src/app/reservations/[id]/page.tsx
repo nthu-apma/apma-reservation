@@ -25,7 +25,7 @@ export default async function ReservationDetailPage({ params }: { params: { id: 
   if (!reservation) notFound()
 
   const isOwner = reservation.userId === session.user.id
-  const isStaff = ['ADMIN', 'ASSISTANT'].includes(session.user.role)
+  const isStaff = session.user.role === 'ADMIN'
   if (!isOwner && !isStaff) redirect('/dashboard')
 
   return (

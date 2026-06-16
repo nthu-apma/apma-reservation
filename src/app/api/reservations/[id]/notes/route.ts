@@ -12,7 +12,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   if (!reservation) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const isOwner = reservation.userId === session.user.id
-  const isStaff = ['ADMIN', 'ASSISTANT'].includes(session.user.role)
+  const isStaff = session.user.role === 'ADMIN'
   if (!isOwner && !isStaff) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const notes = await prisma.note.findMany({
@@ -34,7 +34,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!reservation) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const isOwner = reservation.userId === session.user.id
-  const isStaff = ['ADMIN', 'ASSISTANT'].includes(session.user.role)
+  const isStaff = session.user.role === 'ADMIN'
   if (!isOwner && !isStaff) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()

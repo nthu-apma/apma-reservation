@@ -28,11 +28,10 @@ interface User {
 
 const ROLE_COLORS: Record<string, string> = {
   ADMIN: 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
-  ASSISTANT: 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
   USER: 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-400',
 }
 
-const ROLE_TABS = ['ALL', 'ADMIN', 'ASSISTANT', 'USER'] as const
+const ROLE_TABS = ['ALL', 'ADMIN', 'USER'] as const
 
 export function AdminUsersClient({ users }: { users: User[] }) {
   const { lang, t } = useLanguage()
@@ -149,7 +148,6 @@ export function AdminUsersClient({ users }: { users: User[] }) {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="USER">{t.admin.role.USER}</SelectItem>
-                        <SelectItem value="ASSISTANT">{t.admin.role.ASSISTANT}</SelectItem>
                         <SelectItem value="ADMIN">{t.admin.role.ADMIN}</SelectItem>
                       </SelectContent>
                     </Select>

@@ -47,7 +47,7 @@ export function ReservationDetailClient({
   const [cancelling, setCancelling] = useState(false)
 
   const isOwner = reservation.user.id === currentUserId
-  const isStaff = ['ADMIN', 'ASSISTANT'].includes(currentUserRole)
+  const isStaff = currentUserRole === 'ADMIN'
   const canCancel = isOwner && ['PENDING', 'CONFIRMED'].includes(reservation.status)
 
   const eqName = lang === 'zh' ? reservation.equipment.name : (reservation.equipment.nameEn || reservation.equipment.name)

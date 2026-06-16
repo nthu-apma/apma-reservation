@@ -25,7 +25,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   if (!reservation) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const isOwner = reservation.userId === session.user.id
-  const isAdmin = session.user.role === 'ADMIN' || session.user.role === 'ASSISTANT'
+  const isAdmin = session.user.role === 'ADMIN'
   if (!isOwner && !isAdmin) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   return NextResponse.json({

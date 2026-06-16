@@ -158,7 +158,6 @@ export const translations = {
       setUser: '設為一般使用者',
       role: {
         USER: '一般使用者',
-        ASSISTANT: '協助量測',
         ADMIN: '管理員',
       },
     },
@@ -341,7 +340,6 @@ export const translations = {
       setUser: 'Set as User',
       role: {
         USER: 'User',
-        ASSISTANT: 'Assistant',
         ADMIN: 'Admin',
       },
     },
