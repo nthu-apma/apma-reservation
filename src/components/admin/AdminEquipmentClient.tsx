@@ -1,7 +1,7 @@
 'use client'
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Plus, Edit, Trash2, FlaskConical, GripVertical, ChevronUp, ChevronDown, Settings2, HelpCircle } from 'lucide-react'
+import { Plus, Edit, Trash2, FlaskConical, GripVertical, ChevronUp, ChevronDown, Settings2, HelpCircle, Users, Crown, UserMinus } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -20,6 +20,11 @@ import { cn, getStatusColor } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { FormField } from '@/types'
 
+interface EquipmentAdminEntry {
+  id: string; userId: string; isPrimary: boolean
+  user: { id: string; name: string }
+}
+
 interface Equipment {
   id: string; name: string; nameEn?: string | null
   description?: string | null; descriptionEn?: string | null
@@ -27,6 +32,7 @@ interface Equipment {
   category?: string | null; imageUrl?: string | null
   contactPerson?: string | null; contactEmail?: string | null; contactPhone?: string | null; contactLab?: string | null
   status: string; formFields: FormField[]; order: number
+  admins?: EquipmentAdminEntry[]
 }
 
 const FIELD_TYPES: { value: FormField['type']; labelZh: string; labelEn: string }[] = [
@@ -378,6 +384,14 @@ export function AdminEquipmentClient({ equipment, isSuperAdmin }: { equipment: E
   const [saving, setSaving] = useState(false)
   const [deleteId, setDeleteId] = useState<string | null>(null)
 
+  // Equipment admins state (SUPER_ADMIN only)
+  const [equipmentAdmins, setEquipmentAdmins] = useState<EquipmentAdminEntry[]>([])
+  const [allUsers, setAllUsers] = useState<{ id: string; name: string; email: string }[]>([])
+  const [addAdminUserId, setAddAdminUserId] = useState('')
+  const [addAdminIsPrimary, setAddAdminIsPrimary] = useState(false)
+  const [addingAdmin, setAddingAdmin] = useState(false)
+  const [removingAdminId, setRemovingAdminId] = useState<string | null>(null)
+
   // Field editor state
   const [fieldDialogOpen, setFieldDialogOpen] = useState(false)
   const [editingField, setEditingField] = useState<FieldForm | null>(null)
@@ -393,6 +407,9 @@ export function AdminEquipmentClient({ equipment, isSuperAdmin }: { equipment: E
   function openCreate() {
     setEditing(null)
     setForm(emptyEquipment)
+    setEquipmentAdmins([])
+    setAddAdminUserId('')
+    setAddAdminIsPrimary(false)
     setDialogOpen(true)
   }
 
@@ -407,7 +424,56 @@ export function AdminEquipmentClient({ equipment, isSuperAdmin }: { equipment: E
       contactPhone: eq.contactPhone ?? '', contactLab: eq.contactLab ?? '',
       status: eq.status, formFields: eq.formFields, order: eq.order,
     })
+    setEquipmentAdmins(eq.admins ?? [])
+    setAddAdminUserId('')
+    setAddAdminIsPrimary(false)
+    if (isSuperAdmin && allUsers.length === 0) {
+      fetch('/api/admin/users')
+        .then((r) => r.json())
+        .then((data) => setAllUsers(data.map((u: { id: string; name: string; email: string }) => ({ id: u.id, name: u.name, email: u.email }))))
+        .catch(() => {})
+    }
     setDialogOpen(true)
+  }
+
+  async function addAdmin() {
+    if (!editing || !addAdminUserId) return
+    setAddingAdmin(true)
+    try {
+      const res = await fetch(`/api/admin/equipment/${editing.id}/admins`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: addAdminUserId, isPrimary: addAdminIsPrimary }),
+      })
+      if (!res.ok) throw new Error()
+      const newEntry: EquipmentAdminEntry = await res.json()
+      setEquipmentAdmins((prev) => {
+        const filtered = prev.filter((a) => a.userId !== newEntry.userId)
+        return [...filtered, newEntry]
+      })
+      setAddAdminUserId('')
+      setAddAdminIsPrimary(false)
+      toast.success(lang === 'zh' ? '已新增負責人' : 'Admin added')
+    } catch {
+      toast.error(t.common.error)
+    } finally {
+      setAddingAdmin(false)
+    }
+  }
+
+  async function removeAdmin(userId: string) {
+    if (!editing) return
+    setRemovingAdminId(userId)
+    try {
+      const res = await fetch(`/api/admin/equipment/${editing.id}/admins?userId=${userId}`, { method: 'DELETE' })
+      if (!res.ok) throw new Error()
+      setEquipmentAdmins((prev) => prev.filter((a) => a.userId !== userId))
+      toast.success(lang === 'zh' ? '已移除' : 'Removed')
+    } catch {
+      toast.error(t.common.error)
+    } finally {
+      setRemovingAdminId(null)
+    }
   }
 
   function openAddField() {
@@ -549,9 +615,22 @@ export function AdminEquipmentClient({ equipment, isSuperAdmin }: { equipment: E
                       </Badge>
                       {eq.category && <span className="text-xs text-muted-foreground">{eq.category}</span>}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      {lang === 'zh' ? `${eq.formFields.length} 個表單欄位` : `${eq.formFields.length} form fields`}
-                    </p>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
+                      <span>{lang === 'zh' ? `${eq.formFields.length} 個表單欄位` : `${eq.formFields.length} form fields`}</span>
+                      {eq.admins && eq.admins.length > 0 && (
+                        <span className="flex items-center gap-1">
+                          {eq.admins.map((a) => (
+                            <span key={a.userId} className="flex items-center gap-0.5">
+                              {a.isPrimary
+                                ? <Crown className="h-3 w-3 text-yellow-600" />
+                                : <Users className="h-3 w-3 text-muted-foreground/60" />
+                              }
+                              {a.user.name}
+                            </span>
+                          ))}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <div className="flex gap-1">
                     <Button variant="ghost" size="sm" onClick={() => openEdit(eq)}>
@@ -731,6 +810,86 @@ export function AdminEquipmentClient({ equipment, isSuperAdmin }: { equipment: E
                 </div>
               )}
             </div>
+
+            {/* Equipment admins section - SUPER_ADMIN + edit only */}
+            {isSuperAdmin && editing && (
+              <>
+                <Separator />
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <span className="font-medium text-sm">{lang === 'zh' ? '設備管理員' : 'Equipment Admins'}</span>
+                    <Badge variant="outline" className="text-xs">{equipmentAdmins.length}</Badge>
+                  </div>
+
+                  {equipmentAdmins.length === 0 ? (
+                    <p className="text-sm text-muted-foreground text-center py-4 border border-dashed rounded-lg">
+                      {lang === 'zh' ? '尚無設備管理員' : 'No admins assigned'}
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {equipmentAdmins.map((a) => (
+                        <div key={a.userId} className="flex items-center justify-between gap-2 px-3 py-2 border rounded-lg bg-muted/30">
+                          <div className="flex items-center gap-2">
+                            {a.isPrimary
+                              ? <Crown className="h-3.5 w-3.5 text-yellow-600 shrink-0" />
+                              : <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            }
+                            <span className="text-sm font-medium">{a.user.name}</span>
+                            <Badge variant={a.isPrimary ? 'default' : 'secondary'} className="text-xs">
+                              {a.isPrimary ? (lang === 'zh' ? '主要負責人' : 'Primary') : (lang === 'zh' ? '代理負責人' : 'Deputy')}
+                            </Badge>
+                          </div>
+                          <Button
+                            variant="ghost" size="sm"
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+                            disabled={removingAdminId === a.userId}
+                            onClick={() => removeAdmin(a.userId)}
+                          >
+                            <UserMinus className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Add new admin */}
+                  <div className="flex items-center gap-2">
+                    <Select value={addAdminUserId} onValueChange={setAddAdminUserId}>
+                      <SelectTrigger className="flex-1 h-8 text-xs">
+                        <SelectValue placeholder={lang === 'zh' ? '選擇使用者' : 'Select user'} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allUsers
+                          .filter((u) => !equipmentAdmins.find((a) => a.userId === u.id))
+                          .map((u) => (
+                            <SelectItem key={u.id} value={u.id} className="text-xs">
+                              {u.name} <span className="text-muted-foreground">({u.email})</span>
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Switch
+                        id="isPrimary"
+                        checked={addAdminIsPrimary}
+                        onCheckedChange={setAddAdminIsPrimary}
+                        className="scale-75"
+                      />
+                      <label htmlFor="isPrimary" className="text-xs text-muted-foreground whitespace-nowrap cursor-pointer">
+                        {lang === 'zh' ? '主要' : 'Primary'}
+                      </label>
+                    </div>
+                    <Button size="sm" className="h-8 shrink-0" disabled={!addAdminUserId || addingAdmin} onClick={addAdmin}>
+                      <Plus className="h-3 w-3 mr-1" />{lang === 'zh' ? '新增' : 'Add'}
+                    </Button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {lang === 'zh' ? '* 管理員須先在系統中完成註冊才能被指派' : '* Users must register first before they can be assigned'}
+                  </p>
+                </div>
+              </>
+            )}
           </div>
 
           <DialogFooter>
