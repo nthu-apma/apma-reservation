@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, ArrowRight, CheckCircle, CalendarDays, ClipboardList, Upload, X } from 'lucide-react'
+import { ArrowLeft, ArrowRight, CheckCircle, ClipboardList, Phone, Mail, Upload, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
@@ -14,17 +14,16 @@ import { toast } from 'sonner'
 import { cn } from '@/lib/utils'
 import type { FormField } from '@/types'
 
-interface TimeSlot { id: string; date: string; startTime: string; endTime: string }
 interface Equipment {
-  id: string; name: string; nameEn?: string | null; formFields: FormField[]
+  id: string; name: string; nameEn?: string | null
+  contactPerson?: string | null; contactEmail?: string | null; contactPhone?: string | null; contactLab?: string | null
+  formFields: FormField[]
 }
 
-export function BookingClient({ equipment, timeSlots }: { equipment: Equipment; timeSlots: TimeSlot[] }) {
+export function BookingClient({ equipment }: { equipment: Equipment }) {
   const { lang, t } = useLanguage()
   const router = useRouter()
   const [step, setStep] = useState(1)
-  const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null)
-  const [selectedDate, setSelectedDate] = useState<string | null>(null)
   const [formData, setFormData] = useState<Record<string, string>>({})
   const [uploading, setUploading] = useState<Record<string, boolean>>({})
   const [submitting, setSubmitting] = useState(false)
@@ -52,13 +51,9 @@ export function BookingClient({ equipment, timeSlots }: { equipment: Equipment; 
     }
   }
 
-  const uniqueDates = Array.from(new Set(timeSlots.map((s) => s.date))).sort()
-  const slotsForDate = selectedDate ? timeSlots.filter((s) => s.date === selectedDate) : []
-
   const name = lang === 'zh' ? equipment.name : (equipment.nameEn || equipment.name)
 
   async function handleSubmit() {
-    if (!selectedSlot) return
     const missing = equipment.formFields.filter(
       (f) => f.required && isVisible(f, formData) && !formData[f.id]?.trim()
     )
@@ -79,11 +74,7 @@ export function BookingClient({ equipment, timeSlots }: { equipment: Equipment; 
       const res = await fetch('/api/reservations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          equipmentId: equipment.id,
-          timeSlotId: selectedSlot.id,
-          formData: visibleFormData,
-        }),
+        body: JSON.stringify({ equipmentId: equipment.id, formData: visibleFormData }),
       })
       if (!res.ok) {
         const err = await res.json()
@@ -106,18 +97,20 @@ export function BookingClient({ equipment, timeSlots }: { equipment: Equipment; 
             <CheckCircle className="h-10 w-10 text-green-600" />
           </div>
         </div>
-        <h1 className="text-2xl font-bold mb-3">{t.booking.successTitle}</h1>
-        <p className="text-muted-foreground mb-8">{t.booking.successDesc}</p>
+        <h1 className="text-2xl font-bold mb-3">{lang === 'zh' ? '諮詢申請已送出' : 'Consultation Submitted'}</h1>
+        <p className="text-muted-foreground mb-8">
+          {lang === 'zh' ? '申請已成功送出，設備管理員將盡快與您聯繫。' : 'Your request has been submitted. The equipment admin will contact you soon.'}
+        </p>
         <Button asChild>
-          <Link href="/dashboard">{t.booking.viewMyBookings}</Link>
+          <Link href="/dashboard">{lang === 'zh' ? '查看我的申請' : 'View My Requests'}</Link>
         </Button>
       </div>
     )
   }
 
   const steps = [
-    { num: 1, label: t.booking.step1, icon: CalendarDays },
-    { num: 2, label: t.booking.step2, icon: ClipboardList },
+    { num: 1, label: lang === 'zh' ? '聯絡資訊' : 'Contact Info', icon: Phone },
+    { num: 2, label: lang === 'zh' ? '填寫申請表' : 'Application Form', icon: ClipboardList },
   ]
 
   return (
@@ -126,7 +119,7 @@ export function BookingClient({ equipment, timeSlots }: { equipment: Equipment; 
         <Link href={`/equipment/${equipment.id}`}><ArrowLeft className="mr-2 h-4 w-4" />{t.common.back}</Link>
       </Button>
 
-      <h1 className="text-xl font-bold mb-2">{t.booking.title}</h1>
+      <h1 className="text-xl font-bold mb-2">{lang === 'zh' ? '立即諮詢' : 'Consultation Request'}</h1>
       <p className="text-muted-foreground mb-6">{name}</p>
 
       {/* Step indicator */}
@@ -135,9 +128,7 @@ export function BookingClient({ equipment, timeSlots }: { equipment: Equipment; 
           <div key={s.num} className="flex items-center gap-2">
             <div className={cn(
               'flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium transition-colors',
-              step >= s.num
-                ? 'bg-primary text-primary-foreground'
-                : 'bg-muted text-muted-foreground'
+              step >= s.num ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
             )}>
               {s.num}
             </div>
@@ -151,77 +142,65 @@ export function BookingClient({ equipment, timeSlots }: { equipment: Equipment; 
         ))}
       </div>
 
-      {/* Step 1: Select time slot */}
+      {/* Step 1: Contact info */}
       {step === 1 && (
         <div className="space-y-6">
-          {uniqueDates.length === 0 ? (
-            <Card>
-              <CardContent className="py-10 text-center text-muted-foreground">
-                {t.booking.noAvailableDates}
-              </CardContent>
-            </Card>
-          ) : (
-            <>
-              {/* Date selector */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base">{t.booking.selectDate}</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="flex flex-wrap gap-2">
-                    {uniqueDates.map((date) => (
-                      <button
-                        key={date}
-                        onClick={() => { setSelectedDate(date); setSelectedSlot(null) }}
-                        className={cn(
-                          'px-3 py-1.5 rounded-md text-sm border transition-colors',
-                          selectedDate === date
-                            ? 'bg-primary text-primary-foreground border-primary'
-                            : 'border-input hover:bg-accent'
-                        )}
-                      >
-                        {date}
-                      </button>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Time slot selector */}
-              {selectedDate && (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">{t.booking.selectSlot} · {selectedDate}</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="flex flex-wrap gap-2">
-                      {slotsForDate.map((slot) => (
-                        <button
-                          key={slot.id}
-                          onClick={() => setSelectedSlot(slot)}
-                          className={cn(
-                            'px-4 py-2 rounded-md text-sm border transition-colors',
-                            selectedSlot?.id === slot.id
-                              ? 'bg-primary text-primary-foreground border-primary'
-                              : 'border-input hover:bg-accent'
-                          )}
-                        >
-                          {slot.startTime} – {slot.endTime}
-                        </button>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">
+                {lang === 'zh' ? '設備負責人聯絡資訊' : 'Equipment Contact Information'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {equipment.contactPerson && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-muted-foreground w-16 shrink-0">{lang === 'zh' ? '負責人' : 'Contact'}</span>
+                  <span className="font-medium">{equipment.contactPerson}</span>
+                </div>
               )}
-            </>
-          )}
+              {equipment.contactLab && (
+                <div className="flex items-center gap-2 text-sm">
+                  <span className="text-muted-foreground w-16 shrink-0">{lang === 'zh' ? '實驗室' : 'Lab'}</span>
+                  <span>{equipment.contactLab}</span>
+                </div>
+              )}
+              {equipment.contactEmail && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <a href={`mailto:${equipment.contactEmail}`} className="text-primary hover:underline">
+                    {equipment.contactEmail}
+                  </a>
+                </div>
+              )}
+              {equipment.contactPhone && (
+                <div className="flex items-center gap-2 text-sm">
+                  <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <a href={`tel:${equipment.contactPhone}`} className="text-primary hover:underline">
+                    {equipment.contactPhone}
+                  </a>
+                </div>
+              )}
+              {!equipment.contactEmail && !equipment.contactPhone && !equipment.contactPerson && (
+                <p className="text-sm text-muted-foreground">
+                  {lang === 'zh' ? '請透過下方申請表提交需求，管理員將主動聯繫您。' : 'Please submit the form below. The admin will contact you.'}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card className="bg-primary/5 border-primary/20">
+            <CardContent className="pt-4 pb-4">
+              <p className="text-sm text-muted-foreground">
+                {lang === 'zh'
+                  ? '您可以透過上方聯絡資訊直接與設備管理員溝通，或填寫下方申請表送出正式諮詢申請。'
+                  : 'You may contact the equipment admin directly above, or submit a formal consultation request via the form below.'}
+              </p>
+            </CardContent>
+          </Card>
 
           <div className="flex justify-end">
-            <Button
-              onClick={() => setStep(2)}
-              disabled={!selectedSlot}
-            >
-              {t.booking.next} <ArrowRight className="ml-2 h-4 w-4" />
+            <Button onClick={() => setStep(2)}>
+              {lang === 'zh' ? '填寫申請表' : 'Fill Application Form'} <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -230,21 +209,9 @@ export function BookingClient({ equipment, timeSlots }: { equipment: Equipment; 
       {/* Step 2: Fill form */}
       {step === 2 && (
         <div className="space-y-6">
-          {/* Selected slot summary */}
-          <Card className="bg-primary/5 border-primary/20">
-            <CardContent className="pt-4 pb-4">
-              <div className="flex items-center gap-2 text-sm">
-                <CalendarDays className="h-4 w-4 text-primary" />
-                <span className="font-medium">{selectedSlot?.date}</span>
-                <span className="text-muted-foreground">{selectedSlot?.startTime} – {selectedSlot?.endTime}</span>
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Dynamic form */}
           <Card>
             <CardHeader className="pb-3">
-              <CardTitle className="text-base">{t.equipment.formTitle}</CardTitle>
+              <CardTitle className="text-base">{lang === 'zh' ? '諮詢申請表' : 'Consultation Form'}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               {equipment.formFields.map((field) => {
@@ -260,19 +227,11 @@ export function BookingClient({ equipment, timeSlots }: { equipment: Equipment; 
                       {field.required && <span className="text-destructive ml-1">*</span>}
                     </Label>
                     {field.type === 'textarea' ? (
-                      <Textarea
-                        placeholder={placeholder}
-                        value={formData[field.id] || ''}
-                        onChange={(e) => setFormData((p) => ({ ...p, [field.id]: e.target.value }))}
-                      />
+                      <Textarea placeholder={placeholder} value={formData[field.id] || ''}
+                        onChange={(e) => setFormData((p) => ({ ...p, [field.id]: e.target.value }))} />
                     ) : field.type === 'select' ? (
-                      <Select
-                        value={formData[field.id] || ''}
-                        onValueChange={(v) => setFormData((p) => ({ ...p, [field.id]: v }))}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder={placeholder} />
-                        </SelectTrigger>
+                      <Select value={formData[field.id] || ''} onValueChange={(v) => setFormData((p) => ({ ...p, [field.id]: v }))}>
+                        <SelectTrigger><SelectValue placeholder={placeholder} /></SelectTrigger>
                         <SelectContent>
                           {field.options?.map((opt, idx) => {
                             const display = lang === 'zh' ? opt : (field.optionsEn?.[idx] ?? opt)
@@ -301,26 +260,14 @@ export function BookingClient({ equipment, timeSlots }: { equipment: Equipment; 
                           )}>
                             <Upload className="h-4 w-4" />
                             <span>{uploading[field.id] ? (lang === 'zh' ? '上傳中...' : 'Uploading...') : (lang === 'zh' ? '點擊上傳圖片或 PDF' : 'Click to upload image or PDF')}</span>
-                            <input
-                              type="file"
-                              accept="image/*,.pdf"
-                              className="hidden"
-                              disabled={uploading[field.id]}
-                              onChange={(e) => {
-                                const f = e.target.files?.[0]
-                                if (f) handleFileUpload(field.id, f)
-                              }}
-                            />
+                            <input type="file" accept="image/*,.pdf" className="hidden" disabled={uploading[field.id]}
+                              onChange={(e) => { const f = e.target.files?.[0]; if (f) handleFileUpload(field.id, f) }} />
                           </label>
                         )}
                       </div>
                     ) : (
-                      <Input
-                        type={field.type}
-                        placeholder={placeholder}
-                        value={formData[field.id] || ''}
-                        onChange={(e) => setFormData((p) => ({ ...p, [field.id]: e.target.value }))}
-                      />
+                      <Input type={field.type} placeholder={placeholder} value={formData[field.id] || ''}
+                        onChange={(e) => setFormData((p) => ({ ...p, [field.id]: e.target.value }))} />
                     )}
                     {hint && <p className="text-xs text-muted-foreground">{hint}</p>}
                   </div>
@@ -331,10 +278,10 @@ export function BookingClient({ equipment, timeSlots }: { equipment: Equipment; 
 
           <div className="flex justify-between">
             <Button variant="outline" onClick={() => setStep(1)}>
-              <ArrowLeft className="mr-2 h-4 w-4" /> {t.booking.prev}
+              <ArrowLeft className="mr-2 h-4 w-4" /> {lang === 'zh' ? '上一步' : 'Back'}
             </Button>
             <Button onClick={handleSubmit} disabled={submitting}>
-              {submitting ? t.booking.submitting : t.booking.submit}
+              {submitting ? (lang === 'zh' ? '送出中...' : 'Submitting...') : (lang === 'zh' ? '送出申請' : 'Submit Request')}
             </Button>
           </div>
         </div>

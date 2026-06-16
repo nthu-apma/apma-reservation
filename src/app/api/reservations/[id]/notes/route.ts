@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { authOptions, isAdminRole } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
@@ -12,7 +12,7 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   if (!reservation) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const isOwner = reservation.userId === session.user.id
-  const isStaff = session.user.role === 'ADMIN'
+  const isStaff = isAdminRole(session.user.role)
   if (!isOwner && !isStaff) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const notes = await prisma.note.findMany({
@@ -34,7 +34,7 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!reservation) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const isOwner = reservation.userId === session.user.id
-  const isStaff = session.user.role === 'ADMIN'
+  const isStaff = isAdminRole(session.user.role)
   if (!isOwner && !isStaff) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()

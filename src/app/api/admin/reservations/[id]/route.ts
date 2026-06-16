@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { authOptions, isAdminRole } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { sendReservationConfirmed, sendReservationRejected } from '@/lib/email'
-import { format } from 'date-fns'
+import { sendConsultationConfirmed, sendConsultationRejected } from '@/lib/email'
 import { z } from 'zod'
 
 const actionSchema = z.object({
@@ -13,7 +12,7 @@ const actionSchema = z.object({
 
 export async function PATCH(req: Request, { params }: { params: { id: string } }) {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') {
+  if (!session || !isAdminRole(session.user.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -24,11 +23,16 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     where: { id: params.id },
     include: {
       user: { select: { name: true, email: true } },
-      equipment: { select: { name: true } },
-      timeSlot: { select: { date: true, startTime: true, endTime: true } },
+      equipment: { select: { name: true, admins: { select: { userId: true } } } },
     },
   })
   if (!reservation) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
+  // ADMIN can only act on their equipment
+  if (session.user.role === 'ADMIN') {
+    const isMyEquipment = reservation.equipment.admins.some((a) => a.userId === session.user.id)
+    if (!isMyEquipment) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   if (action === 'ARCHIVE' || action === 'UNARCHIVE') {
     const updated = await prisma.reservation.update({
@@ -39,10 +43,7 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
   }
 
   const statusMap = {
-    CONFIRM: 'CONFIRMED',
-    REJECT: 'CANCELLED',
-    COMPLETE: 'COMPLETED',
-    NO_SHOW: 'NO_SHOW',
+    CONFIRM: 'CONFIRMED', REJECT: 'CANCELLED', COMPLETE: 'COMPLETED', NO_SHOW: 'NO_SHOW',
   } as const
 
   const updated = await prisma.reservation.update({
@@ -50,23 +51,17 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     data: { status: statusMap[action as keyof typeof statusMap], adminNote },
   })
 
-  const dateStr = format(reservation.timeSlot.date, 'yyyy-MM-dd')
-  const timeStr = `${reservation.timeSlot.startTime} – ${reservation.timeSlot.endTime}`
-
   try {
     if (action === 'CONFIRM') {
-      await sendReservationConfirmed(reservation.user.email, {
+      await sendConsultationConfirmed(reservation.user.email, {
         userName: reservation.user.name,
         equipmentName: reservation.equipment.name,
-        date: dateStr,
-        timeSlot: timeStr,
         adminNote,
       })
     } else if (action === 'REJECT') {
-      await sendReservationRejected(reservation.user.email, {
+      await sendConsultationRejected(reservation.user.email, {
         userName: reservation.user.name,
         equipmentName: reservation.equipment.name,
-        date: dateStr,
         adminNote,
       })
     }

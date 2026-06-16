@@ -1,13 +1,13 @@
 'use client'
 import { useState } from 'react'
 import Link from 'next/link'
-import { CalendarDays, FileText, FlaskConical, MessageSquare } from 'lucide-react'
+import { FileText, FlaskConical, MessageSquare } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { useLanguage } from '@/contexts/LanguageContext'
-import { cn, getStatusColor, formatDate, formatTimeSlot } from '@/lib/utils'
+import { cn, getStatusColor, formatDateTime } from '@/lib/utils'
 
 interface Reservation {
   id: string
@@ -15,7 +15,6 @@ interface Reservation {
   createdAt: Date
   adminNote?: string | null
   equipment: { id: string; name: string; nameEn?: string | null }
-  timeSlot: { date: string; startTime: string; endTime: string }
   _count: { notes: number }
 }
 
@@ -24,19 +23,15 @@ export function DashboardClient({ reservations }: { reservations: Reservation[] 
   const [tab, setTab] = useState('ALL')
 
   const statusTabs = ['ALL', 'PENDING', 'CONFIRMED', 'COMPLETED', 'CANCELLED']
-
   const filtered = tab === 'ALL' ? reservations : reservations.filter((r) => r.status === tab)
-
-  const statusLabel = (s: string) => {
-    return (t.reservation.status_label as Record<string, string>)[s] || s
-  }
+  const statusLabel = (s: string) => (t.reservation.status_label as Record<string, string>)[s] || s
 
   return (
     <div className="container py-8 max-w-4xl">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">{t.dashboard.title}</h1>
         <Button asChild size="sm">
-          <Link href="/">{lang === 'zh' ? '新增預約' : 'New Booking'}</Link>
+          <Link href="/">{lang === 'zh' ? '新增諮詢' : 'New Consultation'}</Link>
         </Button>
       </div>
 
@@ -58,7 +53,7 @@ export function DashboardClient({ reservations }: { reservations: Reservation[] 
               <FlaskConical className="h-12 w-12 mx-auto mb-4 opacity-30" />
               <p className="mb-4">{t.dashboard.noReservations}</p>
               <Button asChild variant="outline">
-                <Link href="/">{t.dashboard.bookNow}</Link>
+                <Link href="/">{lang === 'zh' ? '立即諮詢' : 'Consult Now'}</Link>
               </Button>
             </div>
           ) : (
@@ -77,10 +72,7 @@ export function DashboardClient({ reservations }: { reservations: Reservation[] 
                             </Badge>
                           </div>
                           <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                            <span className="flex items-center gap-1">
-                              <CalendarDays className="h-3 w-3" />
-                              {r.timeSlot.date} {formatTimeSlot(r.timeSlot.startTime, r.timeSlot.endTime)}
-                            </span>
+                            <span>{formatDateTime(r.createdAt, lang)}</span>
                             {r._count.notes > 0 && (
                               <span className="flex items-center gap-1">
                                 <MessageSquare className="h-3 w-3" />

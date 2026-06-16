@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { authOptions, isAdminRole } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { format } from 'date-fns'
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') {
+  if (!session || !isAdminRole(session.user.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -18,20 +17,26 @@ export async function GET(req: Request) {
   if (status && status !== 'ALL') where.status = status
   if (equipmentId) where.equipmentId = equipmentId
 
+  // ADMIN (not SUPER_ADMIN) can only see their equipment's reservations
+  if (session.user.role === 'ADMIN') {
+    const myEquipment = await prisma.equipmentAdmin.findMany({
+      where: { userId: session.user.id },
+      select: { equipmentId: true },
+    })
+    const myEquipmentIds = myEquipment.map((e) => e.equipmentId)
+    where.equipmentId = equipmentId
+      ? (myEquipmentIds.includes(equipmentId) ? equipmentId : '__none__')
+      : { in: myEquipmentIds }
+  }
+
   const reservations = await prisma.reservation.findMany({
     where,
     include: {
       user: { select: { id: true, name: true, email: true, institution: true, lab: true } },
-      equipment: { select: { id: true, name: true, nameEn: true } },
-      timeSlot: { select: { id: true, date: true, startTime: true, endTime: true } },
+      equipment: { select: { id: true, name: true } },
     },
     orderBy: { createdAt: 'desc' },
   })
 
-  return NextResponse.json(
-    reservations.map((r) => ({
-      ...r,
-      timeSlot: { ...r.timeSlot, date: format(r.timeSlot.date, 'yyyy-MM-dd') },
-    }))
-  )
+  return NextResponse.json(reservations)
 }

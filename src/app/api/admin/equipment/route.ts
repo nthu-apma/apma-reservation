@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { authOptions, isAdminRole } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { z } from 'zod'
 
@@ -14,6 +14,8 @@ const equipmentSchema = z.object({
   category: z.string().optional(),
   imageUrl: z.string().optional(),
   contactPerson: z.string().optional(),
+  contactEmail: z.string().optional(),
+  contactPhone: z.string().optional(),
   contactLab: z.string().optional(),
   status: z.enum(['ACTIVE', 'MAINTENANCE', 'INACTIVE']).default('ACTIVE'),
   formFields: z.array(z.any()),
@@ -22,17 +24,33 @@ const equipmentSchema = z.object({
 
 export async function GET() {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') {
+  if (!session || !isAdminRole(session.user.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const equipment = await prisma.equipment.findMany({ orderBy: { order: 'asc' } })
+  if (session.user.role === 'ADMIN') {
+    const myEquipment = await prisma.equipmentAdmin.findMany({
+      where: { userId: session.user.id },
+      select: { equipmentId: true },
+    })
+    const equipment = await prisma.equipment.findMany({
+      where: { id: { in: myEquipment.map((e) => e.equipmentId) } },
+      include: { admins: { include: { user: { select: { id: true, name: true } } } } },
+      orderBy: { order: 'asc' },
+    })
+    return NextResponse.json(equipment)
+  }
+
+  const equipment = await prisma.equipment.findMany({
+    include: { admins: { include: { user: { select: { id: true, name: true } } } } },
+    orderBy: { order: 'asc' },
+  })
   return NextResponse.json(equipment)
 }
 
 export async function POST(req: Request) {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') {
+  if (!session || session.user.role !== 'SUPER_ADMIN') {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

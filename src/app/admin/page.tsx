@@ -1,18 +1,33 @@
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { AdminDashboardClient } from '@/components/admin/AdminDashboardClient'
 
 export default async function AdminDashboardPage() {
+  const session = await getServerSession(authOptions)!
+
+  let equipmentFilter: { equipmentId?: { in: string[] } } = {}
+  if (session?.user.role === 'ADMIN') {
+    const myEquipment = await prisma.equipmentAdmin.findMany({
+      where: { userId: session.user.id },
+      select: { equipmentId: true },
+    })
+    equipmentFilter = { equipmentId: { in: myEquipment.map((e) => e.equipmentId) } }
+  }
+
   const [statusCounts, totalUsers, totalEquipment, recentReservations] = await Promise.all([
-    prisma.reservation.groupBy({ by: ['status'], _count: true }),
+    prisma.reservation.groupBy({ by: ['status'], where: equipmentFilter, _count: true }),
     prisma.user.count(),
-    prisma.equipment.count(),
+    session?.user.role === 'SUPER_ADMIN'
+      ? prisma.equipment.count()
+      : prisma.equipmentAdmin.count({ where: { userId: session?.user.id } }),
     prisma.reservation.findMany({
       take: 5,
+      where: equipmentFilter,
       orderBy: { createdAt: 'desc' },
       include: {
         user: { select: { name: true, email: true } },
         equipment: { select: { name: true } },
-        timeSlot: { select: { date: true, startTime: true, endTime: true } },
       },
     }),
   ])
@@ -31,16 +46,5 @@ export default async function AdminDashboardPage() {
     totalEquipment,
   }
 
-  return (
-    <AdminDashboardClient
-      stats={stats}
-      recentReservations={recentReservations.map((r) => ({
-        ...r,
-        timeSlot: {
-          ...r.timeSlot,
-          date: r.timeSlot.date.toISOString().split('T')[0],
-        },
-      }))}
-    />
-  )
+  return <AdminDashboardClient stats={stats} recentReservations={recentReservations} />
 }

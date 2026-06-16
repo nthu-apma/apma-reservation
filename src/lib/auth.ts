@@ -61,3 +61,7 @@ export const authOptions: NextAuthOptions = {
     },
   },
 }
+
+export function isAdminRole(role: string) {
+  return role === 'ADMIN' || role === 'SUPER_ADMIN'
+}

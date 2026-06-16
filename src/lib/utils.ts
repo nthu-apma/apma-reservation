@@ -23,6 +23,10 @@ export function formatTimeSlot(startTime: string, endTime: string) {
   return `${startTime} – ${endTime}`
 }
 
+export function isAdminRoleClient(role: string) {
+  return role === 'ADMIN' || role === 'SUPER_ADMIN'
+}
+
 export function getStatusColor(status: string) {
   const map: Record<string, string> = {
     PENDING: 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',

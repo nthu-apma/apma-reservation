@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { authOptions, isAdminRole } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
 import { format } from 'date-fns'
 
@@ -18,7 +18,7 @@ function csvCell(value: unknown): string {
 
 export async function GET(req: Request) {
   const session = await getServerSession(authOptions)
-  if (!session || session.user.role !== 'ADMIN') {
+  if (!session || !isAdminRole(session.user.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
@@ -30,12 +30,20 @@ export async function GET(req: Request) {
   if (status && status !== 'ALL') where.status = status
   where.archived = archivedOnly
 
+  // ADMIN can only export their equipment's reservations
+  if (session.user.role === 'ADMIN') {
+    const myEquipment = await prisma.equipmentAdmin.findMany({
+      where: { userId: session.user.id },
+      select: { equipmentId: true },
+    })
+    where.equipmentId = { in: myEquipment.map((e) => e.equipmentId) }
+  }
+
   const reservations = await prisma.reservation.findMany({
     where,
     include: {
       user: { select: { name: true, email: true, institution: true } },
       equipment: { select: { name: true } },
-      timeSlot: { select: { date: true, startTime: true, endTime: true } },
     },
     orderBy: { createdAt: 'desc' },
   })
@@ -47,8 +55,8 @@ export async function GET(req: Request) {
   )
 
   const headers = [
-    '預約ID', '申請時間', '設備', '用戶姓名', '電子郵件', '所屬單位',
-    '量測日期', '開始時間', '結束時間', '狀態', '封存', '管理員備注', '取消原因',
+    '申請ID', '申請時間', '設備/服務', '用戶姓名', '電子郵件', '所屬單位',
+    '狀態', '封存', '管理員備注', '取消原因',
     ...allFormDataKeys,
   ]
 
@@ -61,9 +69,6 @@ export async function GET(req: Request) {
       r.user.name,
       r.user.email,
       r.user.institution ?? '',
-      format(r.timeSlot.date, 'yyyy-MM-dd'),
-      r.timeSlot.startTime,
-      r.timeSlot.endTime,
       STATUS_LABELS[r.status] ?? r.status,
       r.archived ? '是' : '否',
       r.adminNote ?? '',
@@ -77,7 +82,7 @@ export async function GET(req: Request) {
     .map((row) => row.map(csvCell).join(','))
     .join('\n')
 
-  const filename = `reservations_${format(new Date(), 'yyyyMMdd_HHmm')}.csv`
+  const filename = `consultations_${format(new Date(), 'yyyyMMdd_HHmm')}.csv`
 
   return new NextResponse(csv, {
     headers: {

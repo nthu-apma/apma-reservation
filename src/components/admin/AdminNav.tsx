@@ -1,14 +1,11 @@
 'use client'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import {
-  LayoutDashboard, CalendarCheck, FlaskConical,
-  Users, Clock, Building2,
-} from 'lucide-react'
+import { LayoutDashboard, CalendarCheck, FlaskConical, Users, Building2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useLanguage } from '@/contexts/LanguageContext'
 
-export function AdminNav() {
+export function AdminNav({ isSuperAdmin }: { isSuperAdmin?: boolean }) {
   const pathname = usePathname()
   const { t } = useLanguage()
 
@@ -16,7 +13,6 @@ export function AdminNav() {
     { href: '/admin', label: t.admin.dashboard, icon: LayoutDashboard, exact: true },
     { href: '/admin/reservations', label: t.admin.reservations, icon: CalendarCheck, exact: false },
     { href: '/admin/equipment', label: t.admin.equipment, icon: FlaskConical, exact: false },
-    { href: '/admin/timeslots', label: t.admin.timeslots, icon: Clock, exact: false },
     { href: '/admin/users', label: t.admin.users, icon: Users, exact: false },
     { href: '/admin/labs', label: t.admin.labs, icon: Building2, exact: false },
   ]

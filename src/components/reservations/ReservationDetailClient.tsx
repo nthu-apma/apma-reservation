@@ -2,7 +2,7 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { ArrowLeft, CalendarDays, User, FlaskConical, MessageSquare, Send, Trash2 } from 'lucide-react'
+import { ArrowLeft, User, MessageSquare, Send, Trash2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -12,10 +12,9 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
   DialogFooter, DialogDescription,
 } from '@/components/ui/dialog'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { useLanguage } from '@/contexts/LanguageContext'
-import { cn, getStatusColor, formatDateTime, formatTimeSlot } from '@/lib/utils'
+import { cn, getStatusColor, formatDateTime, isAdminRoleClient } from '@/lib/utils'
 import { toast } from 'sonner'
 import type { FormField } from '@/types'
 
@@ -26,7 +25,6 @@ interface Reservation {
   createdAt: Date; updatedAt: Date
   user: { id: string; name: string; email: string; institution?: string | null; lab?: string | null }
   equipment: { id: string; name: string; nameEn?: string | null; formFields: FormField[] }
-  timeSlot: { date: string; startTime: string; endTime: string }
   notes: Note[]
 }
 
@@ -47,7 +45,7 @@ export function ReservationDetailClient({
   const [cancelling, setCancelling] = useState(false)
 
   const isOwner = reservation.user.id === currentUserId
-  const isStaff = currentUserRole === 'ADMIN'
+  const isStaff = isAdminRoleClient(currentUserRole)
   const canCancel = isOwner && ['PENDING', 'CONFIRMED'].includes(reservation.status)
 
   const eqName = lang === 'zh' ? reservation.equipment.name : (reservation.equipment.nameEn || reservation.equipment.name)
@@ -84,7 +82,7 @@ export function ReservationDetailClient({
         body: JSON.stringify({ cancelReason }),
       })
       if (!res.ok) throw new Error()
-      toast.success(lang === 'zh' ? '預約已取消' : 'Reservation cancelled')
+      toast.success(lang === 'zh' ? '申請已取消' : 'Request cancelled')
       setCancelOpen(false)
       router.refresh()
     } catch {
@@ -117,12 +115,8 @@ export function ReservationDetailClient({
       <div className="grid gap-4 lg:grid-cols-2 mb-6">
         {/* Basic info */}
         <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm">{lang === 'zh' ? '預約資訊' : 'Booking Info'}</CardTitle></CardHeader>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">{lang === 'zh' ? '諮詢資訊' : 'Request Info'}</CardTitle></CardHeader>
           <CardContent className="space-y-2 text-sm">
-            <div className="flex items-center gap-2">
-              <CalendarDays className="h-4 w-4 text-muted-foreground" />
-              <span>{reservation.timeSlot.date} {formatTimeSlot(reservation.timeSlot.startTime, reservation.timeSlot.endTime)}</span>
-            </div>
             <div className="flex items-center gap-2">
               <User className="h-4 w-4 text-muted-foreground" />
               <span>{reservation.user.name}</span>
@@ -253,7 +247,7 @@ export function ReservationDetailClient({
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t.reservation.cancelConfirm}</DialogTitle>
-            <DialogDescription>{eqName} · {reservation.timeSlot.date}</DialogDescription>
+            <DialogDescription>{eqName}</DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
             <Label>{t.reservation.cancelReasonLabel}</Label>

@@ -25,7 +25,7 @@ interface Equipment {
   description?: string | null; descriptionEn?: string | null
   notices?: string | null; noticesEn?: string | null
   category?: string | null; imageUrl?: string | null
-  contactPerson?: string | null; contactLab?: string | null
+  contactPerson?: string | null; contactEmail?: string | null; contactPhone?: string | null; contactLab?: string | null
   status: string; formFields: FormField[]; order: number
 }
 
@@ -41,7 +41,7 @@ const FIELD_TYPES: { value: FormField['type']; labelZh: string; labelEn: string 
 const emptyEquipment = {
   name: '', nameEn: '', description: '', descriptionEn: '',
   notices: '', noticesEn: '', category: '', imageUrl: '',
-  contactPerson: '', contactLab: '',
+  contactPerson: '', contactEmail: '', contactPhone: '', contactLab: '',
   status: 'ACTIVE', formFields: [] as FormField[], order: 0,
 }
 
@@ -368,7 +368,7 @@ function FieldEditorDialog({
 }
 
 // ─── Main Component ────────────────────────────────────────────────────────
-export function AdminEquipmentClient({ equipment }: { equipment: Equipment[] }) {
+export function AdminEquipmentClient({ equipment, isSuperAdmin }: { equipment: Equipment[]; isSuperAdmin?: boolean }) {
   const { lang, t } = useLanguage()
   const router = useRouter()
 
@@ -403,7 +403,8 @@ export function AdminEquipmentClient({ equipment }: { equipment: Equipment[] }) 
       description: eq.description ?? '', descriptionEn: eq.descriptionEn ?? '',
       notices: eq.notices ?? '', noticesEn: eq.noticesEn ?? '',
       category: eq.category ?? '', imageUrl: eq.imageUrl ?? '',
-      contactPerson: eq.contactPerson ?? '', contactLab: eq.contactLab ?? '',
+      contactPerson: eq.contactPerson ?? '', contactEmail: eq.contactEmail ?? '',
+      contactPhone: eq.contactPhone ?? '', contactLab: eq.contactLab ?? '',
       status: eq.status, formFields: eq.formFields, order: eq.order,
     })
     setDialogOpen(true)
@@ -521,9 +522,11 @@ export function AdminEquipmentClient({ equipment }: { equipment: Equipment[] }) 
     <div className="p-6 space-y-4">
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-bold">{t.admin.equipment}</h1>
-        <Button onClick={openCreate} size="sm">
-          <Plus className="h-4 w-4 mr-1" />{t.admin.addEquipment}
-        </Button>
+        {isSuperAdmin && (
+          <Button onClick={openCreate} size="sm">
+            <Plus className="h-4 w-4 mr-1" />{t.admin.addEquipment}
+          </Button>
+        )}
       </div>
 
       {/* Equipment list */}
@@ -554,9 +557,11 @@ export function AdminEquipmentClient({ equipment }: { equipment: Equipment[] }) 
                     <Button variant="ghost" size="sm" onClick={() => openEdit(eq)}>
                       <Edit className="h-4 w-4" />
                     </Button>
-                    <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setDeleteId(eq.id)}>
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
+                    {isSuperAdmin && (
+                      <Button variant="ghost" size="sm" className="text-destructive" onClick={() => setDeleteId(eq.id)}>
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -633,6 +638,17 @@ export function AdminEquipmentClient({ equipment }: { equipment: Equipment[] }) 
               <div className="space-y-1.5">
                 <Label>{lang === 'zh' ? '負責實驗室' : 'Responsible Lab'}</Label>
                 <Input value={form.contactLab} onChange={(e) => setF('contactLab', e.target.value)} placeholder={lang === 'zh' ? '實驗室名稱' : 'Lab name'} />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label>{lang === 'zh' ? '聯絡 Email' : 'Contact Email'}</Label>
+                <Input type="email" value={form.contactEmail} onChange={(e) => setF('contactEmail', e.target.value)} placeholder="contact@example.com" />
+              </div>
+              <div className="space-y-1.5">
+                <Label>{lang === 'zh' ? '聯絡電話' : 'Contact Phone'}</Label>
+                <Input value={form.contactPhone} onChange={(e) => setF('contactPhone', e.target.value)} placeholder="02-xxxx-xxxx" />
               </div>
             </div>
 

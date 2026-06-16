@@ -1,11 +1,11 @@
 'use client'
 import Link from 'next/link'
-import { CalendarCheck, Users, FlaskConical, Clock, AlertCircle, CheckCircle, XCircle } from 'lucide-react'
+import { CalendarCheck, Users, FlaskConical, Clock, AlertCircle, CheckCircle } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useLanguage } from '@/contexts/LanguageContext'
-import { cn, getStatusColor, formatTimeSlot } from '@/lib/utils'
+import { cn, getStatusColor } from '@/lib/utils'
 
 interface Stats {
   totalReservations: number; pendingReservations: number
@@ -18,7 +18,6 @@ interface RecentReservation {
   id: string; status: string
   user: { name: string; email: string }
   equipment: { name: string }
-  timeSlot: { date: string; startTime: string; endTime: string }
 }
 
 export function AdminDashboardClient({ stats, recentReservations }: { stats: Stats; recentReservations: RecentReservation[] }) {
@@ -65,8 +64,8 @@ export function AdminDashboardClient({ stats, recentReservations }: { stats: Sta
                 <AlertCircle className="h-5 w-5 text-yellow-600" />
                 <span className="font-medium text-yellow-800 dark:text-yellow-400">
                   {lang === 'zh'
-                    ? `有 ${stats.pendingReservations} 筆預約待審核`
-                    : `${stats.pendingReservations} reservation(s) pending review`}
+                    ? `有 ${stats.pendingReservations} 筆諮詢申請待審核`
+                    : `${stats.pendingReservations} consultation(s) pending review`}
                 </span>
               </div>
               <Button size="sm" variant="outline" asChild>
@@ -83,7 +82,7 @@ export function AdminDashboardClient({ stats, recentReservations }: { stats: Sta
       <Card>
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
-            <CardTitle className="text-base">{lang === 'zh' ? '最近預約' : 'Recent Reservations'}</CardTitle>
+            <CardTitle className="text-base">{lang === 'zh' ? '最近申請' : 'Recent Requests'}</CardTitle>
             <Button variant="ghost" size="sm" asChild>
               <Link href="/admin/reservations">{lang === 'zh' ? '查看全部' : 'View All'}</Link>
             </Button>
@@ -95,9 +94,6 @@ export function AdminDashboardClient({ stats, recentReservations }: { stats: Sta
               <div key={r.id} className="flex items-center justify-between text-sm">
                 <div className="flex-1 min-w-0">
                   <p className="font-medium truncate">{r.user.name} · {r.equipment.name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {r.timeSlot.date} {formatTimeSlot(r.timeSlot.startTime, r.timeSlot.endTime)}
-                  </p>
                 </div>
                 <div className="flex items-center gap-2 shrink-0">
                   <Badge className={cn('text-xs', getStatusColor(r.status))}>

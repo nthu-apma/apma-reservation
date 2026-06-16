@@ -159,6 +159,7 @@ export const translations = {
       role: {
         USER: '一般使用者',
         ADMIN: '管理員',
+        SUPER_ADMIN: '超級管理員',
       },
     },
     common: {
@@ -341,6 +342,7 @@ export const translations = {
       role: {
         USER: 'User',
         ADMIN: 'Admin',
+        SUPER_ADMIN: 'Super Admin',
       },
     },
     common: {

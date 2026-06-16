@@ -14,7 +14,7 @@ import {
   DialogFooter, DialogDescription,
 } from '@/components/ui/dialog'
 import { useLanguage } from '@/contexts/LanguageContext'
-import { cn, getStatusColor, formatTimeSlot, formatDateTime } from '@/lib/utils'
+import { cn, getStatusColor, formatDateTime } from '@/lib/utils'
 import { toast } from 'sonner'
 
 interface Reservation {
@@ -22,7 +22,6 @@ interface Reservation {
   formData: Record<string, string>
   user: { id: string; name: string; email: string; institution?: string | null; lab?: string | null }
   equipment: { id: string; name: string }
-  timeSlot: { date: string; startTime: string; endTime: string }
 }
 
 interface Equipment { id: string; name: string }
@@ -171,10 +170,9 @@ export function AdminReservationsClient({
                         </div>
                         <p className="text-sm">{r.equipment.name}</p>
                         <p className="text-xs text-muted-foreground">
-                          {r.timeSlot.date} {formatTimeSlot(r.timeSlot.startTime, r.timeSlot.endTime)}
+                          {formatDateTime(r.createdAt, lang)}
                           {r.user.institution && ` · ${r.user.institution}`}
                         </p>
-                        <p className="text-xs text-muted-foreground">{formatDateTime(r.createdAt, lang)}</p>
                       </div>
 
                       <div className="flex flex-wrap gap-1 shrink-0">

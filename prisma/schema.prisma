@@ -23,13 +23,15 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  reservations Reservation[]
-  notes        Note[]
+  reservations    Reservation[]
+  notes           Note[]
+  equipmentAdmins EquipmentAdmin[]
 }
 
 enum Role {
   USER
   ADMIN
+  SUPER_ADMIN
 }
 
 model Lab {
@@ -58,6 +60,8 @@ model Equipment {
   category      String?
   imageUrl      String?
   contactPerson String?
+  contactEmail  String?
+  contactPhone  String?
   contactLab    String?
   status        EquipmentStatus @default(ACTIVE)
   formFields    Json
@@ -65,8 +69,20 @@ model Equipment {
   createdAt     DateTime        @default(now())
   updatedAt     DateTime        @updatedAt
 
-  timeSlots    TimeSlot[]
   reservations Reservation[]
+  admins       EquipmentAdmin[]
+}
+
+model EquipmentAdmin {
+  id          String    @id @default(cuid())
+  equipmentId String
+  userId      String
+  isPrimary   Boolean   @default(false)
+
+  equipment Equipment @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([equipmentId, userId])
 }
 
 enum EquipmentStatus {
@@ -75,26 +91,10 @@ enum EquipmentStatus {
   INACTIVE
 }
 
-model TimeSlot {
-  id          String   @id @default(cuid())
-  equipmentId String
-  date        DateTime @db.Date
-  startTime   String
-  endTime     String
-  available   Boolean  @default(true)
-  createdAt   DateTime @default(now())
-
-  equipment   Equipment    @relation(fields: [equipmentId], references: [id], onDelete: Cascade)
-  reservation Reservation?
-
-  @@unique([equipmentId, date, startTime])
-}
-
 model Reservation {
   id           String            @id @default(cuid())
   userId       String
   equipmentId  String
-  timeSlotId   String            @unique
   status       ReservationStatus @default(PENDING)
   formData     Json
   adminNote    String?
@@ -105,7 +105,6 @@ model Reservation {
 
   user      User      @relation(fields: [userId], references: [id])
   equipment Equipment @relation(fields: [equipmentId], references: [id])
-  timeSlot  TimeSlot  @relation(fields: [timeSlotId], references: [id])
   notes     Note[]
 }
 
