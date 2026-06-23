@@ -886,7 +886,7 @@ export function AdminEquipmentClient({ equipment, isSuperAdmin }: { equipment: E
                         <SelectValue placeholder={lang === 'zh' ? '選擇使用者' : 'Select user'} />
                       </SelectTrigger>
                       <SelectContent>
-                        {allUsers
+                        {adminUsers
                           .filter((u) => !equipmentAdmins.find((a) => a.userId === u.id))
                           .map((u) => (
                             <SelectItem key={u.id} value={u.id} className="text-xs">
@@ -911,7 +911,7 @@ export function AdminEquipmentClient({ equipment, isSuperAdmin }: { equipment: E
                     </Button>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    {lang === 'zh' ? '* 管理員須先在系統中完成註冊才能被指派' : '* Users must register first before they can be assigned'}
+                    {lang === 'zh' ? '* 須先在使用者管理頁設為管理員角色，才能被指派' : '* Must already have the Admin role (set in User Management) before being assigned'}
                   </p>
                 </div>
               </>
