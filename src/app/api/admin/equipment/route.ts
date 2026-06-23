@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions, isAdminRole } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { syncPrimaryAdminFromContact } from '@/lib/equipmentAdmin'
 import { z } from 'zod'
 
 const equipmentSchema = z.object({
@@ -58,6 +59,7 @@ export async function POST(req: Request) {
     const body = await req.json()
     const data = equipmentSchema.parse(body)
     const equipment = await prisma.equipment.create({ data })
+    await syncPrimaryAdminFromContact(equipment.id, data.contactEmail)
     return NextResponse.json(equipment, { status: 201 })
   } catch (error) {
     if (error instanceof z.ZodError) return NextResponse.json({ error: error.errors }, { status: 400 })

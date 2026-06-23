@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions, isAdminRole } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
+import { syncPrimaryAdminFromContact } from '@/lib/equipmentAdmin'
 import { z } from 'zod'
 
 const updateSchema = z.object({
@@ -59,6 +60,7 @@ export async function PUT(req: Request, { params }: { params: { id: string } }) 
     const body = await req.json()
     const data = updateSchema.parse(body)
     const equipment = await prisma.equipment.update({ where: { id: params.id }, data })
+    await syncPrimaryAdminFromContact(params.id, data.contactEmail)
     return NextResponse.json(equipment)
   } catch (error) {
     if (error instanceof z.ZodError) return NextResponse.json({ error: error.errors }, { status: 400 })
