@@ -386,7 +386,7 @@ export function AdminEquipmentClient({ equipment, isSuperAdmin }: { equipment: E
 
   // Equipment admins state (SUPER_ADMIN only)
   const [equipmentAdmins, setEquipmentAdmins] = useState<EquipmentAdminEntry[]>([])
-  const [allUsers, setAllUsers] = useState<{ id: string; name: string; email: string; lab: string | null }[]>([])
+  const [allUsers, setAllUsers] = useState<{ id: string; name: string; email: string; lab: string | null; role: string }[]>([])
   const [addAdminUserId, setAddAdminUserId] = useState('')
   const [addAdminIsPrimary, setAddAdminIsPrimary] = useState(false)
   const [addingAdmin, setAddingAdmin] = useState(false)
@@ -408,9 +408,11 @@ export function AdminEquipmentClient({ equipment, isSuperAdmin }: { equipment: E
     if (allUsers.length > 0) return
     fetch('/api/admin/users')
       .then((r) => r.json())
-      .then((data) => setAllUsers(data.map((u: { id: string; name: string; email: string; lab: string | null }) => ({ id: u.id, name: u.name, email: u.email, lab: u.lab ?? null }))))
+      .then((data) => setAllUsers(data.map((u: { id: string; name: string; email: string; lab: string | null; role: string }) => ({ id: u.id, name: u.name, email: u.email, lab: u.lab ?? null, role: u.role }))))
       .catch(() => {})
   }
+
+  const adminUsers = allUsers.filter((u) => u.role === 'ADMIN' || u.role === 'SUPER_ADMIN')
 
   function selectContactPerson(userId: string) {
     const u = allUsers.find((x) => x.id === userId)
@@ -723,14 +725,14 @@ export function AdminEquipmentClient({ equipment, isSuperAdmin }: { equipment: E
               <div className="space-y-1.5">
                 <Label>{lang === 'zh' ? '負責人' : 'Contact Person'}</Label>
                 <Select
-                  value={allUsers.find((u) => u.email === form.contactEmail)?.id ?? ''}
+                  value={adminUsers.find((u) => u.email === form.contactEmail)?.id ?? ''}
                   onValueChange={selectContactPerson}
                 >
                   <SelectTrigger>
                     <SelectValue placeholder={form.contactPerson || (lang === 'zh' ? '選擇負責人' : 'Select contact person')} />
                   </SelectTrigger>
                   <SelectContent>
-                    {allUsers.map((u) => (
+                    {adminUsers.map((u) => (
                       <SelectItem key={u.id} value={u.id}>
                         {u.name} <span className="text-muted-foreground">({u.email})</span>
                       </SelectItem>
