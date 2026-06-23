@@ -18,6 +18,12 @@ export async function PATCH(req: Request, { params }: { params: { id: string } }
     return NextResponse.json({ error: 'Cannot change your own role' }, { status: 400 })
   }
 
+  const target = await prisma.user.findUnique({ where: { id: params.id }, select: { role: true } })
+  if (!target) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (target.role === 'SUPER_ADMIN') {
+    return NextResponse.json({ error: 'SUPER_ADMIN role is fixed and cannot be changed' }, { status: 403 })
+  }
+
   const body = await req.json()
   const { role } = schema.parse(body)
 
@@ -43,6 +49,12 @@ export async function DELETE(_req: Request, { params }: { params: { id: string }
 
   if (params.id === session.user.id) {
     return NextResponse.json({ error: 'Cannot delete your own account' }, { status: 400 })
+  }
+
+  const target = await prisma.user.findUnique({ where: { id: params.id }, select: { role: true } })
+  if (!target) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+  if (target.role === 'SUPER_ADMIN') {
+    return NextResponse.json({ error: 'Cannot delete a SUPER_ADMIN account' }, { status: 403 })
   }
 
   const activeReservations = await prisma.reservation.count({

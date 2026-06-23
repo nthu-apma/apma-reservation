@@ -386,7 +386,7 @@ export function AdminEquipmentClient({ equipment, isSuperAdmin }: { equipment: E
 
   // Equipment admins state (SUPER_ADMIN only)
   const [equipmentAdmins, setEquipmentAdmins] = useState<EquipmentAdminEntry[]>([])
-  const [allUsers, setAllUsers] = useState<{ id: string; name: string; email: string }[]>([])
+  const [allUsers, setAllUsers] = useState<{ id: string; name: string; email: string; lab: string | null }[]>([])
   const [addAdminUserId, setAddAdminUserId] = useState('')
   const [addAdminIsPrimary, setAddAdminIsPrimary] = useState(false)
   const [addingAdmin, setAddingAdmin] = useState(false)
@@ -404,12 +404,27 @@ export function AdminEquipmentClient({ equipment, isSuperAdmin }: { equipment: E
     setForm((p) => ({ ...p, [k]: v }))
   }
 
+  function loadUsers() {
+    if (allUsers.length > 0) return
+    fetch('/api/admin/users')
+      .then((r) => r.json())
+      .then((data) => setAllUsers(data.map((u: { id: string; name: string; email: string; lab: string | null }) => ({ id: u.id, name: u.name, email: u.email, lab: u.lab ?? null }))))
+      .catch(() => {})
+  }
+
+  function selectContactPerson(userId: string) {
+    const u = allUsers.find((x) => x.id === userId)
+    if (!u) return
+    setForm((p) => ({ ...p, contactPerson: u.name, contactEmail: u.email, contactLab: u.lab ?? p.contactLab }))
+  }
+
   function openCreate() {
     setEditing(null)
     setForm(emptyEquipment)
     setEquipmentAdmins([])
     setAddAdminUserId('')
     setAddAdminIsPrimary(false)
+    loadUsers()
     setDialogOpen(true)
   }
 
@@ -427,12 +442,7 @@ export function AdminEquipmentClient({ equipment, isSuperAdmin }: { equipment: E
     setEquipmentAdmins(eq.admins ?? [])
     setAddAdminUserId('')
     setAddAdminIsPrimary(false)
-    if (isSuperAdmin && allUsers.length === 0) {
-      fetch('/api/admin/users')
-        .then((r) => r.json())
-        .then((data) => setAllUsers(data.map((u: { id: string; name: string; email: string }) => ({ id: u.id, name: u.name, email: u.email }))))
-        .catch(() => {})
-    }
+    loadUsers()
     setDialogOpen(true)
   }
 
@@ -712,7 +722,21 @@ export function AdminEquipmentClient({ equipment, isSuperAdmin }: { equipment: E
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1.5">
                 <Label>{lang === 'zh' ? '負責人' : 'Contact Person'}</Label>
-                <Input value={form.contactPerson} onChange={(e) => setF('contactPerson', e.target.value)} placeholder={lang === 'zh' ? '姓名' : 'Name'} />
+                <Select
+                  value={allUsers.find((u) => u.email === form.contactEmail)?.id ?? ''}
+                  onValueChange={selectContactPerson}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder={form.contactPerson || (lang === 'zh' ? '選擇負責人' : 'Select contact person')} />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allUsers.map((u) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        {u.name} <span className="text-muted-foreground">({u.email})</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-1.5">
                 <Label>{lang === 'zh' ? '負責實驗室' : 'Responsible Lab'}</Label>

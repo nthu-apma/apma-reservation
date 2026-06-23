@@ -139,7 +139,7 @@ export function AdminUsersClient({ users }: { users: User[] }) {
                       </div>
                     </div>
 
-                    {user.id !== session?.user?.id && (
+                    {user.id !== session?.user?.id && user.role !== 'SUPER_ADMIN' && (
                       <div className="shrink-0 flex items-center gap-2">
                         <Select
                           value={user.role}

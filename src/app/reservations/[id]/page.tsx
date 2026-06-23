@@ -23,7 +23,13 @@ export default async function ReservationDetailPage({ params }: { params: { id: 
   if (!reservation) notFound()
 
   const isOwner = reservation.userId === session.user.id
-  const isStaff = isAdminRole(session.user.role)
+  let isStaff = isAdminRole(session.user.role)
+  if (isStaff && session.user.role === 'ADMIN') {
+    const isMyEquipment = await prisma.equipmentAdmin.findFirst({
+      where: { equipmentId: reservation.equipmentId, userId: session.user.id },
+    })
+    isStaff = !!isMyEquipment
+  }
   if (!isOwner && !isStaff) redirect('/dashboard')
 
   return (

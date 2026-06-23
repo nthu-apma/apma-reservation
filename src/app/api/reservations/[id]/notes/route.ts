@@ -12,7 +12,13 @@ export async function GET(req: Request, { params }: { params: { id: string } }) 
   if (!reservation) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const isOwner = reservation.userId === session.user.id
-  const isStaff = isAdminRole(session.user.role)
+  let isStaff = isAdminRole(session.user.role)
+  if (isStaff && session.user.role === 'ADMIN') {
+    const isMyEquipment = await prisma.equipmentAdmin.findFirst({
+      where: { equipmentId: reservation.equipmentId, userId: session.user.id },
+    })
+    isStaff = !!isMyEquipment
+  }
   if (!isOwner && !isStaff) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const notes = await prisma.note.findMany({
@@ -34,7 +40,13 @@ export async function POST(req: Request, { params }: { params: { id: string } })
   if (!reservation) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
   const isOwner = reservation.userId === session.user.id
-  const isStaff = isAdminRole(session.user.role)
+  let isStaff = isAdminRole(session.user.role)
+  if (isStaff && session.user.role === 'ADMIN') {
+    const isMyEquipment = await prisma.equipmentAdmin.findFirst({
+      where: { equipmentId: reservation.equipmentId, userId: session.user.id },
+    })
+    isStaff = !!isMyEquipment
+  }
   if (!isOwner && !isStaff) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
   const body = await req.json()
