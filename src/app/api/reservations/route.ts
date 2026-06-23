@@ -57,7 +57,7 @@ export async function POST(req: Request) {
         ? equipment.admins.map((a) => a.user.email)
         : await prisma.user.findMany({ where: { role: 'SUPER_ADMIN' }, select: { email: true } }).then((u) => u.map((x) => x.email))
 
-      await Promise.all(
+      const results = await Promise.allSettled(
         adminEmails.map((email) =>
           sendAdminNewConsultation(email, {
             userName: reservation.user.name,
@@ -68,6 +68,13 @@ export async function POST(req: Request) {
           })
         )
       )
+      results.forEach((r, i) => {
+        if (r.status === 'rejected') {
+          console.error(`Admin notification email failed for ${adminEmails[i]}:`, r.reason)
+        } else {
+          console.log(`Admin notification email sent to ${adminEmails[i]}`)
+        }
+      })
     } catch (emailErr) {
       console.error('Email error:', emailErr)
     }
