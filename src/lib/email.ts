@@ -77,7 +77,7 @@ export async function sendAdminNewConsultation(to: string, data: {
           <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:bold">申請人</td><td style="padding:8px;border:1px solid #e5e7eb">${data.userName} (${data.userEmail})</td></tr>
           <tr><td style="padding:8px;border:1px solid #e5e7eb;font-weight:bold">設備/服務</td><td style="padding:8px;border:1px solid #e5e7eb">${data.equipmentName}</td></tr>
         </table>
-        <a href="${data.appUrl}/admin/reservations" style="display:inline-block;background:#7c3aed;color:white;padding:10px 20px;border-radius:6px;text-decoration:none">前往審核</a>
+        <p>請至以下連結查看詳情並進行審核：<br /><a href="${data.appUrl}/admin/reservations">${data.appUrl}/admin/reservations</a></p>
         <p style="color:#6b7280;font-size:14px;margin-top:20px">前瞻光電技術與材料聯盟服務預約系統</p>
       </div>`,
   })
