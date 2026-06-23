@@ -32,7 +32,7 @@ export async function POST(req: Request) {
       data: { email, token, expires },
     })
 
-    const appUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+    const appUrl = process.env.NEXTAUTH_URL || 'https://apma-reservation.vercel.app'
     const resetUrl = `${appUrl}/auth/reset-password?token=${token}`
 
     await sendPasswordReset(email, { userName: user.name, resetUrl })

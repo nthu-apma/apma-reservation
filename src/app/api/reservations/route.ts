@@ -44,7 +44,7 @@ export async function POST(req: Request) {
       include: { equipment: { select: { name: true } }, user: { select: { name: true, email: true } } },
     })
 
-    const appUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
+    const appUrl = process.env.NEXTAUTH_URL || 'https://apma-reservation.vercel.app'
 
     try {
       await sendConsultationSubmitted(session.user.email, {
